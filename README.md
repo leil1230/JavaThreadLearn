@@ -226,7 +226,7 @@ public class JavaSyncDemo01 {
 ```
 > synchronized包裹的函数，其实就是给该函数块添加了一把this锁。
 
-> 注意：synchronized 修饰静态方法使用锁是当前类的字节码文件（即类名.class），同理，如果在静态方法中添加个同步代码块，可以获取类名.class为代码块加锁
+> 注意：synchronized 修饰静态方法使用锁是当前类的字节码文件（即`类名.class`），同理，如果在静态方法中添加个同步代码块，可以获取`类名.class`为代码块加锁
 
 ```java
 class SellTicketRunnable02 implements Runnable {
