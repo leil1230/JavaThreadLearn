@@ -11,11 +11,9 @@ package com.littlestones.sync;
  * 案例:需求现在有100张火车票，有两个窗口同时抢火车票，请使用多线程模拟抢票效果。
  */
 
-class SellTicketRunnable implements Runnable {
+class SellTicketRunnable01 implements Runnable {
 
     public int count = 100;
-
-    private Object lock = new Object();
 
     @Override
     public void run() {
@@ -25,21 +23,23 @@ class SellTicketRunnable implements Runnable {
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
-            synchronized (lock) {
-                if (count > 0) {
-                    int index = 100 - count + 1;
-                    System.out.println(Thread.currentThread().getName() + "卖出第" + index + "张票");
-                    count--;
-                }
-            }
+            this.sale();
+        }
+    }
+
+    synchronized void sale() {
+        if (count > 0) {
+            int index = 100 - count + 1;
+            System.out.println(Thread.currentThread().getName() + "卖出第" + index + "张票");
+            count--;
         }
     }
 }
 
-public class JavaSyncDemo {
+public class JavaSyncDemo01 {
 
     public static void main(String[] args) {
-        SellTicketRunnable runnable = new SellTicketRunnable();
+        SellTicketRunnable01 runnable = new SellTicketRunnable01();
         Thread sellThread1 = new Thread(runnable);
         Thread sellThread2 = new Thread(runnable);
         sellThread1.start();
