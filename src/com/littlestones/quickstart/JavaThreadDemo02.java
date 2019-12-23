@@ -1,4 +1,4 @@
-package com.littlestones;
+package com.littlestones.quickstart;
 
 class RunnableDemo implements Runnable {
 
