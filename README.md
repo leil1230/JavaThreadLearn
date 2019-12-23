@@ -305,8 +305,8 @@ public class JavaSyncDemo03 {
     }
 }
 ```
-> lock和synchronized的区别
->> ①lock在使用时需要手动的获取锁和释放锁;<br/>②lock可以尝试非阻塞的获取锁，如果这一时刻锁没有被其他线程获取到，则成功获取并持有锁；<br/>③lock锁可以响应中断，当获取到锁的线程被中断时，中断异常会被抛出，同时锁被释放；<br/>④lock在指定截至时间之前获取锁，如果解释时间到了依旧无法获取锁，就返回。
+> lock和synchronized的区别<br/>
+> ①lock在使用时需要手动的获取锁和释放锁;<br/>②lock可以尝试非阻塞的获取锁，如果这一时刻锁没有被其他线程获取到，则成功获取并持有锁；<br/>③lock锁可以响应中断，当获取到锁的线程被中断时，中断异常会被抛出，同时锁被释放；<br/>④lock在指定截至时间之前获取锁，如果解释时间到了依旧无法获取锁，就返回。
 
 ```java
 // lock锁的安全使用方法
@@ -319,6 +319,45 @@ class lockDemo {
         } finally {
             lock.unlock();
         }
+    }
+}
+```
+
+##### (4)使用Java原子类
+> `java.util.concurrent.atomic.AtomicBoolean;`
+  `java.util.concurrent.atomic.AtomicInteger;`
+  `java.util.concurrent.atomic.AtomicLong;`
+  `java.util.concurrent.atomic.AtomicReference;`
+ 
+ ```java
+class SellTicketRunnable04 implements Runnable {
+
+    public AtomicInteger count = new AtomicInteger(100);
+
+    @Override
+    public void run() {
+        while (true) {
+            try {
+                Thread.sleep(50);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            if (count.get() > 0) {
+                int index = 100 - count.getAndDecrement() + 1;
+                System.out.println(Thread.currentThread().getName() + "卖出第" + index + "张票");
+            }
+        }
+    }
+}
+
+public class JavaSyncDemo04 {
+
+    public static void main(String[] args) {
+        SellTicketRunnable04 runnable = new SellTicketRunnable04();
+        Thread sellThread1 = new Thread(runnable);
+        Thread sellThread2 = new Thread(runnable);
+        sellThread1.start();
+        sellThread2.start();
     }
 }
 ```
@@ -366,3 +405,8 @@ public class DeadLockDemo01 {
 > 线程1先拿到lock1锁，再拿到lock2锁，执行完成后才能释放所有锁；<br/>线程2先拿到lock2锁，再拿到lock1锁，执行完成后才能释放所有锁。<br/>如果在线程1获取到lock1锁的时候，线程2获取到lock2还没释放，线程1无法获取lock2锁，也就无法释放lock2锁，这时系统就会出现死锁。
 
 > 线程死锁的避免办法：**不要在同步中嵌套同步**
+
+### Java多线程间通讯
+
+> **多线程之间通讯，其实就是多个线程在操作同一个资源，但是操作的动作不同。**<br/>
+> 需求:第一个线程写入(input)用户，另一个线程取读取(out)用户。实现写一个，读一个操作。
