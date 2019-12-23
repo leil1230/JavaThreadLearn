@@ -7,7 +7,6 @@ package com.littlestones.communication;
  * @create: 2019-12-23 17:44
  */
 
-import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * 需求:第一个线程写入(input)用户，另一个线程取读取(out)用户。实现写一个，读一个操作。

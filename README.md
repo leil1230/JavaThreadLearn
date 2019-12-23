@@ -409,4 +409,208 @@ public class DeadLockDemo01 {
 ### Java多线程间通讯
 
 > **多线程之间通讯，其实就是多个线程在操作同一个资源，但是操作的动作不同。**<br/>
+#### 1、使用`wait()`和`notify()`方法在线程中通讯
 > 需求:第一个线程写入(input)用户，另一个线程取读取(out)用户。实现写一个，读一个操作。
+```java
+class User {
+    public String name;
+    public String sex;
+    // 读写标志(true：表示已经写入|false：表示未写入)
+    public boolean flag = false;
+
+    @Override
+    public String toString() {
+        return "name:" + this.name + "=======" + "sex:" + this.sex;
+    }
+}
+
+class InputThread extends Thread {
+    private User user;
+
+    InputThread(User user) {
+        this.user = user;
+    }
+
+    @Override
+    public void run() {
+        int count = 0;
+        while (true) {
+            synchronized (user) {
+                if (this.user.flag) {
+                    try {
+                        // 使当前线程等待
+                        this.user.wait();
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
+                if (count == 0) {
+                    this.setVal("小红", "女");
+                } else {
+                    this.setVal("小明", "男");
+                }
+                count = (count + 1) % 2;
+
+                this.user.flag = true;
+                // 通知另一个线程解除等待状态，继续执行
+                this.user.notify();
+            }
+        }
+    }
+
+    private void setVal(String name, String sex) {
+        this.user.name = name;
+        this.user.sex = sex;
+    }
+
+}
+
+
+class OutThread extends Thread {
+
+    private User user;
+
+    OutThread(User user) {
+        this.user = user;
+    }
+
+    @Override
+    public void run() {
+        while (true) {
+            synchronized (user) {
+                if (!this.user.flag) {
+                    try {
+                        this.user.wait();
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
+                System.out.println(this.user.toString());
+                this.user.flag = false;
+                this.user.notify();
+            }
+        }
+    }
+}
+
+public class ThreadCommDemo {
+    public static void main(String[] args) {
+        User user = new User();
+        InputThread inputThread = new InputThread(user);
+        OutThread outThread = new OutThread(user);
+        inputThread.start();
+        outThread.start();
+    }
+
+}
+```
+> `wait()`、`notify()`、`notifyAll()`是三个定义在Object类中的方法，可以用来控制线程的状态。<br/>
+> ①如果对象调用了`wait()`方法，就会使持有该对象的线程把该对象的控制权交出去，然后处于等待状态；<br/>
+> ②如果对象调用了`notify()`方法，就会通知某个正在等待这个对象控制权的线程，可以继续运行；<br/>
+> ③如果对象调用了`notifyAll()`方法，就会通知所有正在等待这个对象控制权的线程，可以继续运行。
+
+> **`wait()`与`sleep()`的区别**<br/>
+> `sleep()`方法属于`Thread`类中，`wait()`方法属于`Object`类中。`sleep()`方法导致程序暂停执行指定的时间，让出cpu给其他线程，但是监控状态依然保持，当指定的时间到了之后又会自动恢复运行状态。<br/>
+> 在调用`sleep()`方法的过程中，线程不会释放对象锁。<br/>
+> 调用`wait()`方法的时候，线程会放弃对象锁，进入等待此对象的等待锁定池，只有针对此对象调用`notify()`方法后本线程才进入对象锁定池准备，获取对象锁后进入运行状态。
+
+> **注意：`wait()`方法需要包裹在同步块中**
+
+#### 2、使用`condition`的`await()`和`signal()`方法在线程中通讯
+```java
+class User01 {
+    public String name;
+    public String sex;
+    // 读写标志(true：表示已经写入|false：表示未写入)
+    public boolean flag = false;
+
+    public Lock lock = new ReentrantLock();
+
+    Condition condition = lock.newCondition();
+
+    @Override
+    public String toString() {
+        return "name:" + this.name + "=======" + "sex:" + this.sex;
+    }
+}
+
+class InputThread01 extends Thread {
+    private User01 user;
+
+    InputThread01(User01 user) {
+        this.user = user;
+    }
+
+    @Override
+    public void run() {
+        int count = 0;
+        while (true) {
+            this.user.lock.lock();
+            if (this.user.flag) {
+                try {
+                    // 使当前线程等待
+                    this.user.condition.await();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+            if (count == 0) {
+                this.setVal("小红", "女");
+            } else {
+                this.setVal("小明", "男");
+            }
+            count = (count + 1) % 2;
+
+            this.user.flag = true;
+            // 通知另一个线程解除等待状态，继续执行
+            this.user.condition.signal();
+            this.user.lock.unlock();
+        }
+    }
+
+    private void setVal(String name, String sex) {
+        this.user.name = name;
+        this.user.sex = sex;
+    }
+
+}
+
+
+class OutThread01 extends Thread {
+
+    private User01 user;
+
+    OutThread01(User01 user) {
+        this.user = user;
+    }
+
+    @Override
+    public void run() {
+        while (true) {
+            this.user.lock.lock();
+            if (!this.user.flag) {
+                try {
+                    this.user.condition.await();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+            System.out.println(this.user.toString());
+            this.user.flag = false;
+            this.user.condition.signal();
+            this.user.lock.unlock();
+        }
+    }
+}
+
+public class ThreadCommDemo01 {
+    public static void main(String[] args) {
+        User01 user = new User01();
+        InputThread01 inputThread = new InputThread01(user);
+        OutThread01 outThread = new OutThread01(user);
+        inputThread.start();
+        outThread.start();
+    }
+}
+```
+> `condition.await()`方法类似`wait()`方法，`condition.signal()`方法类似`notify()`方法。
