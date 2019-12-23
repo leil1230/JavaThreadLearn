@@ -322,3 +322,47 @@ class lockDemo {
     }
 }
 ```
+
+#### 3、死锁
+> 先看一个死锁的示例
+```java
+public class DeadLockDemo01 {
+
+    private static Object lock1 = new Object();
+    private static Object lock2 = new Object();
+
+    public static void main(String[] args) {
+        new Thread() { //线程1
+            public void run() {
+                while (true) {
+                    synchronized (lock1) {
+                        System.out.println(this.getName() + ":获取lock1锁");
+                        synchronized (lock2) {
+                            System.out.println(this.getName() + ":获取lock2锁");
+                        }
+                    }
+                }
+            }
+        }.start();
+
+        new Thread() { //线程2
+            public void run() {
+                while (true) {
+                    synchronized (lock2) {
+                        System.out.println(this.getName() + ":获取lock2锁");
+                        synchronized (lock1) {
+                            System.out.println(this.getName() + "::获取lock1锁");
+                        }
+                    }
+                }
+            }
+        }.start();
+    }
+}
+```
+![Image 死锁](https://raw.githubusercontent.com/leil1230/JavaThreadLearn/master/img/1577090534.jpg)
+> 运行上面的代码，可以观察到线程卡死，就是出现了死锁
+
+> 线程1先拿到lock1锁，再拿到lock2锁，执行完成后才能释放所有锁；<br/>线程2先拿到lock2锁，再拿到lock1锁，执行完成后才能释放所有锁。<br/>如果在线程1获取到lock1锁的时候，线程2获取到lock2还没释放，线程1无法获取lock2锁，也就无法释放lock2锁，这时系统就会出现死锁。
+
+> 线程死锁的避免办法：**不要在同步中嵌套同步**
