@@ -9,7 +9,7 @@ package com.littlestones.stopthread;
 
 class Thread01 extends Thread {
 
-    private boolean flag = true;
+    volatile boolean flag = true;
 
     @Override
     public void run() {

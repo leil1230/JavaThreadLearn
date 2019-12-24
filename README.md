@@ -624,7 +624,7 @@ public class ThreadCommDemo01 {
 ```java
 class Thread01 extends Thread {
 
-    private boolean flag = true;
+    volatile boolean flag = true;
 
     @Override
     public void run() {
@@ -814,3 +814,111 @@ public class PriorityThreadDemo {
 }
 ```
 ![Image Priority](https://raw.githubusercontent.com/leil1230/JavaThreadLearn/master/img/1577156813(1).jpg)
+
+### 线程的三大特性和volatile
+> 多线程有三大特性：原子性、可见性、有序性
+#### 1、原子性
+> 原子性即一个操作或多个操作，要么全部执行并且执行过程不被任何因素打断，要么就都不执行。<br/>
+> 一个经典的例子就是数据库存储的事务。原子性其实就是保证数据一致、线程安全的一部分。
+
+#### 2、可见性
+> 当多个线程访问同一个变量时，一个线程修改了这个变量的值，其他线程能够立即看得到修改的值。<br/>
+> 若两个线程在不同的cpu，那么线程1改变了i的值还没刷新到主存，线程2又使用了i，那么这个i值肯定还是之前的，线程1对变量的修改其他线程没看到，这就是可见性问题。
+
+#### 3、有序性
+> 程序执行的顺序按照代码的先后顺序执行。<br/>
+> 一般来说处理器为了提高程序运行效率，可能会对输入代码进行优化，它不保证程序中各个语句的执行先后顺序同代码中的顺序一致，但是它会保证程序最终执行结果和代码顺序执行的结果是一致的。<br/>
+> 而在多线程就不一定了，所以我们在多线程编程时就得考虑这个问题了。
+
+#### 4、volatile关键字可以解决线程之间可见性的问题
+```java
+class ThreadDemo extends Thread {
+
+    boolean flag;
+
+    ThreadDemo(boolean flag) {
+        this.flag = flag;
+    }
+
+    @Override
+    public void run() {
+        System.out.println(getName() + "线程开始运行。。。");
+        while (flag) {
+        }
+        System.out.println(getName() + "线程已经结束。。。");
+    }
+
+    public void stopThread() {
+        this.flag = false;
+    }
+}
+
+public class VolatileThreadDemo {
+
+    public static void main(String[] args) {
+        ThreadDemo threadDemo = new ThreadDemo(true);
+        threadDemo.start();
+        try {
+            Thread.sleep(1000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        threadDemo.stopThread();
+    }
+}
+```
+> 先来看以上的代码，在主线程中调用`threadDemo.stopThread()`方法停止线程，看上去逻辑没有问题，但是我们会发现线程没有停止。
+
+![](https://raw.githubusercontent.com/leil1230/JavaThreadLearn/master/img/1577177123(1).jpg)
+
+> 注意：有的同学可能在测试上面代码的时候程序可以正常退出。那是因为你的JVM没有优化造成的！
+
+> 造成线程没有停止的原因是`while(flag)`中的flag是在线程运行的“工作内存”中获取的，而不是从“主内存”中获取的，这就造成了我们在主线程中改变flag的值对于子线程中不生效。只要在flag前加volatile关键字，强制线程每次读取该值的时候都去“主内存”中取值，就能解决我们的问题。
+```java
+package com.littlestones.volatiledemo;
+
+/**
+ * @program: JavaThreadLearn
+ * @description: volatile示例
+ * @author: Leil
+ * @create: 2019-12-24 15:22
+ */
+
+class ThreadDemo extends Thread {
+
+    volatile boolean flag;
+
+    ThreadDemo(boolean flag) {
+        this.flag = flag;
+    }
+
+    @Override
+    public void run() {
+        System.out.println(getName() + "线程开始运行。。。");
+        while (flag) {
+        }
+        System.out.println(getName() + "线程已经结束。。。");
+    }
+
+    public void stopThread() {
+        this.flag = false;
+    }
+}
+
+public class VolatileThreadDemo {
+
+    public static void main(String[] args) {
+        ThreadDemo threadDemo = new ThreadDemo(true);
+        threadDemo.start();
+        try {
+            Thread.sleep(1000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        threadDemo.stopThread();
+    }
+}
+
+```
+![](https://raw.githubusercontent.com/leil1230/JavaThreadLearn/master/img/1577177969(1).jpg)
+> **注意：volatile关键字只能解决线程的可见性问题，不能解决线程的原子性问题**
