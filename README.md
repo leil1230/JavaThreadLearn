@@ -709,6 +709,7 @@ public class StopThreadDemo02 {
 }
 ```
 > 调用`interrupt()`方法会抛出`InterruptedException`异常，捕获后再做停止线程的逻辑即可。<br/>
+
 ![Image 中断线程](https://raw.githubusercontent.com/leil1230/JavaThreadLearn/master/img/1577153195.jpg)
 
 > **如果线程处于类似`while(true)`运行的状态，`interrupt()`方法无法中断线程。**
@@ -753,7 +754,7 @@ public class DaemonThreadDemo {
 ![Image 守护线程](https://raw.githubusercontent.com/leil1230/JavaThreadLearn/master/img/1577154146.jpg)
 
 ### join()的用法和线程的优先级
-#### join()的用法
+#### 1、join()的用法
 > `join()`作用就是让其他线程处于等待状态
 
 > 先看一个需求：创建一个线程，子线程执行完毕后，主线程才能执行
@@ -785,7 +786,7 @@ public class JoinThreadDemo {
 ```
 ![Image join](https://raw.githubusercontent.com/leil1230/JavaThreadLearn/master/img/1577155403(1).jpg)
 
-#### 设置线程的优先级
+#### 2、设置线程的优先级
 > 在Java线程中，通过一个`int priority`来控制优先级，范围为1-10，其中10最高，默认值为5。<br/>
 > **注：设置了优先级，不代表每次都一定会被执行。只是CPU调度会优先分配**
 ```java
