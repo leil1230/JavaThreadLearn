@@ -85,15 +85,18 @@ public class JavaThreadDemo03 {
 > 调用run()方法是使用实例调用，是单线程调用，不会开启多线程。
 
 #### 4、多线程运行状态
-> ①新建状态：新建一个线程，线程还没有开始运行，此时线程就是新建状态
+> ①新建状态(NEW)：新建一个线程，线程还没有开始运行，此时线程就是新建状态
 
 > ②就绪状态：当线程对象调用了start()方法即启动了线程，start()方法创建线程运行的系统资源，并调度线程运行run()方法。当start()方法返回后，线程就处于就绪状态。处于就绪状态的线程并不一定立即运行run()方法，线程还必须同其他线程竞争cpu时间，只有获得cpu时间才能运行线程。因为在单cpu的计算机系统中，不可能同时运行多个线程，一个时刻仅能有一个线程处于运行状态，因此可能存在多个处于就绪状态的线程，对于多个就绪状态的线程是由Java运行时系统的线程调度程序来调度的。
 
-> ③运行状态：当线程获取cpu时间后，线程进入运行状态，真正开始执行run()方法。
+> ③运行状态(RUNNABLE)：当线程获取cpu时间后，线程进入运行状态，真正开始执行run()方法。
 
-> ④阻塞状态：a、线程通过调用sleep()方法进入睡眠；b、线程调用一个在I\O上被阻塞的操作；c、线程试图得到一个锁，而该锁正被其他线程持有；d、线程在等待某个触发条件。
+> ④阻塞状态(BLOCKED/WAITING/TIMED_WAITING)：a、线程通过调用sleep()方法进入睡眠；b、线程调用一个在I\O上被阻塞的操作；c、线程试图得到一个锁，而该锁正被其他线程持有；d、线程在等待某个触发条件。</br>
+> BLOCKED：等待监视器锁，实际上就是被synchronized方法或块阻塞<br/>
+> WAITING：等待用`notify()`或者`notifyAll()`唤醒<br/>
+> TIMED_WAITING：等待用`notify()`或者`notifyAll()`唤醒，如果没有等到，时间到了也会退出这一状态
 
-> ⑤死亡状态：a、run()方法正常退出自然死亡；b、一个未捕获的异常终止了run()方法使线程猝死。
+> ⑤死亡状态(TERMINATED)：a、run()方法正常退出自然死亡；b、一个未捕获的异常终止了run()方法使线程猝死。
 
 #### 5、判断线程的存活状态
 > ①调用isAlive()方法，如果是可运行或被阻塞，方法返回true。
@@ -614,3 +617,199 @@ public class ThreadCommDemo01 {
 }
 ```
 > `condition.await()`方法类似`wait()`方法，`condition.signal()`方法类似`notify()`方法。
+
+### 停止线程
+#### 停止线程的思路
+> ①使用退出标志，使线程正常退出，也就是当`run()`方法结束后线程终止。
+```java
+class Thread01 extends Thread {
+
+    private boolean flag = true;
+
+    @Override
+    public void run() {
+        while (flag) {
+            try {
+                // 可能发生异常的操作
+                System.out.println(getName() + "线程一直在运行。。。");
+            } catch (Exception e) {
+                System.out.println(e.getMessage());
+                this.stopThread();
+            }
+        }
+    }
+
+    public void stopThread() {
+        System.out.println("线程停止运行。。。");
+        this.flag = false;
+    }
+}
+
+public class StopThreadDemo01 {
+
+    public static void main(String[] args) {
+        Thread01 thread01 = new Thread01();
+        thread01.start();
+
+        try {
+            Thread.sleep(5000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        thread01.stopThread();
+    }
+}
+```
+> ②使用`stop()`方法强行终止线程，这个方法已经被弃用了，所以这里不写。<br/>
+> ③使用`interrupt()`方法中断线程（只有线程在`wait`和`sleep`才会捕获`InterruptedException`异常，执行终止线程的逻辑，在运行中不会捕获）
+```java
+class Thread02 extends Thread {
+    private boolean flag = true;
+
+    @Override
+    public void run() {
+        while (flag) {
+            synchronized (this) {
+//                try {
+//                    wait();
+//                } catch (InterruptedException e) {
+//                    e.printStackTrace();
+//                    this.stopThread();
+//                }
+
+                try {
+                    sleep(10000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                    this.stopThread();
+                }
+            }
+        }
+    }
+
+    public void stopThread() {
+        System.out.println("线程已经退出。。。");
+        this.flag = false;
+    }
+}
+
+public class StopThreadDemo02 {
+
+    public static void main(String[] args) {
+        Thread02 thread02 = new Thread02();
+        thread02.start();
+        System.out.println("线程开始");
+        try {
+            Thread.sleep(5000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        thread02.interrupt();
+    }
+}
+```
+> 调用`interrupt()`方法会抛出`InterruptedException`异常，捕获后再做停止线程的逻辑即可。<br/>
+![Image 中断线程](https://raw.githubusercontent.com/leil1230/JavaThreadLearn/master/img/1577153195.jpg)
+
+> **如果线程处于类似`while(true)`运行的状态，`interrupt()`方法无法中断线程。**
+
+### 守护线程
+#### 什么是守护线程
+> Java中有两种线程，一种是用户线程，一种是守护线程。<br/>
+> 当进程不存在或主线程停止，守护线程也会自动停止。
+```java
+class DaemonThread extends Thread {
+    @Override
+    public void run() {
+        while (true) {
+            System.out.println("我是守护线程。。。只要守护的线程不挂，我永远都不挂");
+        }
+    }
+}
+
+public class DaemonThreadDemo {
+
+    public static void main(String[] args) {
+        Thread thread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                DaemonThread daemonThread = new DaemonThread();
+                daemonThread.setDaemon(true);
+                daemonThread.start();
+                try {
+                    Thread.sleep(5000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                System.out.println("主线程运行完成退出。。。");
+            }
+        });
+
+        thread.start();
+    }
+
+}
+```
+![Image 守护线程](https://raw.githubusercontent.com/leil1230/JavaThreadLearn/master/img/1577154146.jpg)
+
+### join()的用法和线程的优先级
+#### join()的用法
+> `join()`作用就是让其他线程处于等待状态
+
+> 先看一个需求：创建一个线程，子线程执行完毕后，主线程才能执行
+```java
+public class JoinThreadDemo {
+
+    public static void main(String[] args) {
+        Thread thread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                System.out.println("这里是子线程");
+                int count = 100;
+                while (count > 0) {
+                    System.out.println(Thread.currentThread().getName() + "=====" + count);
+                    count--;
+                }
+            }
+        });
+        thread.start();
+        try {
+            thread.join();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        System.out.println("这里是主线程");
+    }
+
+}
+```
+![Image join](https://raw.githubusercontent.com/leil1230/JavaThreadLearn/master/img/1577155403(1).jpg)
+
+#### 设置线程的优先级
+> 在Java线程中，通过一个`int priority`来控制优先级，范围为1-10，其中10最高，默认值为5。<br/>
+> **注：设置了优先级，不代表每次都一定会被执行。只是CPU调度会优先分配**
+```java
+class PriorityThread extends Thread {
+
+    public PriorityThread(String name) {
+        this.setName(name);
+    }
+
+    @Override
+    public void run() {
+        System.out.println(getName() + "==========" + getId());
+    }
+}
+
+public class PriorityThreadDemo {
+
+    public static void main(String[] args) {
+        PriorityThread priorityThread1 = new PriorityThread("priority_10");
+        PriorityThread priorityThread2 = new PriorityThread("priority_default");
+        priorityThread1.setPriority(10);
+        priorityThread2.start();
+        priorityThread1.start();
+    }
+}
+```
+![Image Priority](https://raw.githubusercontent.com/leil1230/JavaThreadLearn/master/img/1577156813(1).jpg)
