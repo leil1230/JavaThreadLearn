@@ -987,7 +987,8 @@ public class ThreadLocalDemo {
     }
 }
 ```
-![](https://raw.githubusercontent.com/leil1230/JavaThreadLearn/master/img/1577260161.jpg)
+
+![ThreadLocal](https://raw.githubusercontent.com/leil1230/JavaThreadLearn/master/img/1577260161.jpg)
 
 #### 3、实现个简单的ThreadLocal
 ```java
