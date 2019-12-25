@@ -930,3 +930,242 @@ public class VolatileThreadDemo {
 ```
 ![](https://raw.githubusercontent.com/leil1230/JavaThreadLearn/master/img/1577177969(1).jpg)
 > **注意：volatile关键字只能解决线程的可见性问题，不能解决线程的原子性问题**
+
+### ThreadLocal
+#### 1、什么是ThreadLocal
+> ThreadLocal是保存线程本地化对象的容器，当运行于多线程环境的某个对象用ThreadLocal维护变量时，ThreadLocal为每个使用变量的线程分配一个独立的变量副本。所以每个线程都可以独立的改变自己的副本，而不会影响其他线程所对应的副本。<br/>
+> 从线程的角度看，这个变量就像线程专有的本地变量，这也是类名中"Local"所要表达的意思。
+#### 2、一个ThreadLocal的示例
+```java
+class Entity {
+    // 使用重写initialValue方法初始化值
+//    public ThreadLocal<Integer> seqNum = new ThreadLocal<Integer>() {
+//        @Override
+//        protected Integer initialValue() {
+//            return 0;
+//        }
+//    };
+
+    // 使用lambda表达式初始化值
+    public ThreadLocal<Integer> seqNum = ThreadLocal.withInitial(() -> 0);
+
+    public int getNextSeqNum() {
+        seqNum.set(seqNum.get() + 1);
+        return seqNum.get();
+    }
+}
+
+
+class ThreadDemo extends Thread {
+
+    private Entity entity;
+
+    public ThreadDemo(Entity entity) {
+        this.entity = entity;
+    }
+
+    @Override
+    public void run() {
+        for (int i = 0; i < 3; i++) {
+            System.out.println(getName() + "=====" + entity.getNextSeqNum());
+        }
+    }
+}
+
+public class ThreadLocalDemo {
+    public static void main(String[] args) {
+        Entity entity = new Entity();
+        ThreadDemo threadDemo01 = new ThreadDemo(entity);
+        ThreadDemo threadDemo02 = new ThreadDemo(entity);
+        threadDemo01.start();
+        try {
+            Thread.sleep(1000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        threadDemo02.start();
+    }
+}
+```
+![](https://raw.githubusercontent.com/leil1230/JavaThreadLearn/master/img/1577260161(1).jpg)
+
+#### 3、实现个简单的ThreadLocal
+```java
+public class SimpleThreadLocal<T> {
+
+    private Map<Thread, T> map = Collections.synchronizedMap(new HashMap<>());
+
+    public void set(T val) {
+        map.put(Thread.currentThread(), val);
+    }
+
+    public T get() {
+        Thread thread = Thread.currentThread();
+        if (map.containsKey(thread)) {
+            return map.get(thread);
+        } else {
+            T t = init();
+            map.put(thread, t);
+            return t;
+        }
+    }
+
+    public void remove() {
+        map.remove(Thread.currentThread());
+    }
+
+    public T init() {
+        return null;
+    }
+
+}
+```
+> 下面我们调用自己实现的ThreadLocal测试效果
+```java
+class Entity01 {
+
+    public SimpleThreadLocal<Integer> seqNum = new SimpleThreadLocal<Integer>() {
+        @Override
+        public Integer init() {
+            return 0;
+        }
+    };
+
+    public int getNextSeqNum() {
+        seqNum.set(seqNum.get() + 1);
+        return seqNum.get();
+    }
+}
+
+
+class ThreadDemo01 extends Thread {
+
+    private Entity01 entity;
+
+    public ThreadDemo01(Entity01 entity) {
+        this.entity = entity;
+    }
+
+    @Override
+    public void run() {
+        for (int i = 0; i < 3; i++) {
+            System.out.println(getName() + "=====" + entity.getNextSeqNum());
+        }
+    }
+}
+
+public class SimpleThreadLocalDemo {
+    public static void main(String[] args) {
+        Entity01 entity = new Entity01();
+        ThreadDemo01 threadDemo01 = new ThreadDemo01(entity);
+        ThreadDemo01 threadDemo02 = new ThreadDemo01(entity);
+        threadDemo01.start();
+        try {
+            Thread.sleep(1000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        threadDemo02.start();
+    }
+}
+```
+> 可以看到实现了同样的效果
+
+#### 4、ThreadLocal与Thread同步机制的比较
+> 对于多线程资源共享的问题，同步机制采用了“以时间换空间”的方式：访问串行化，对象共享化<br/>
+> ThreadLocal采用了“以空间换时间”的方式：访问并行化，对象共享化<br/>
+> 前者仅提供了一份变量，让不同的线程排队访问；而后者为每个线程都提供了一份变量，因此可以同时访问而互不影响。
+
+### 线程池
+#### 1、什么是线程池
+> 线程池是指在初始化一个多线程应用程序过程中创建一个线程集合，然后在需要执行新的任务时重用这些线程而不是新建一个线程。线程池中线程的数量通常取决于可用内存数量和应用程序的需求。线程池中的每个线程都有被分配一个任务，一旦任务已经完成了，线程回到池子中并等待下一次分配任务。
+
+#### 2、线程池的作用
+> ①线程池改进了一个应用程序的响应时间。由于线程池中的线程已经准备好且等待被分配任务，应用程序可以直接拿来使用而不用新建一个线程。<br/>
+  ②线程池为每个短生存周期任务创建一个完整的线程的，并可以在任务完成后回收资源。<br/>
+  ③线程池根据当前在系统中运行的进程来优化线程时间片。<br/>
+  ④线程池允许我们开启多个任务而不用为每个线程设置属性。<br/>
+
+#### 3、Java提供的四种线程池
+##### 3.1、newCachedThreadPool
+> 创建一个可缓存线程池，如果线程池长度超过处理需要，可灵活回收空闲线程，若无可回收，则新建线程。
+```java
+public class CachedThreadPoolDemo {
+
+    public static void main(String[] args) {
+        ExecutorService threadPool = Executors.newCachedThreadPool();
+        for (int i = 1; i <= 10; i++) {
+            final int index = i;
+            threadPool.execute(new Runnable() {
+                @Override
+                public void run() {
+                    System.out.println(Thread.currentThread().getName() + "=====" + index);
+                }
+            });
+        }
+    }
+
+}
+```
+
+##### 3.2、newFixedThreadPool
+> 创建一个定长线程池，可控制线程最大并发数，超出的线程会在队列中等待。
+```java
+public class FixedThreadPoolDemo {
+    public static void main(String[] args) {
+        ExecutorService threadPool = Executors.newFixedThreadPool(3);
+        for (int i = 1; i <= 10; i++) {
+            final int index = i;
+            threadPool.execute(() -> {
+                System.out.println(Thread.currentThread().getName() + "=====" + index);
+            });
+        }
+    }
+}
+```
+![](https://raw.githubusercontent.com/leil1230/JavaThreadLearn/master/img/1577263255(1).jpg)
+
+##### 3.3、newScheduledThreadPool
+> 创建一个定长线程池，支持定时及周期性任务执行。
+```java
+public class ScheduledThreadPoolDemo {
+
+    public static void main(String[] args) {
+        ScheduledExecutorService threadPool = Executors.newScheduledThreadPool(3);
+        for (int i = 1; i <= 10; i++) {
+            threadPool.schedule(new Runnable() {
+                @Override
+                public void run() {
+                    System.out.println(Thread.currentThread().getName() + "：延迟3秒打印log");
+                }
+            }, 3, TimeUnit.SECONDS);
+        }
+    }
+
+}
+```
+
+##### 3.4、newSingleThreadExecutor
+> 创建一个单线程化的线程池，它只会用唯一的工作线程来执行任务，保证所有任务按照指定顺序执行。
+```java
+public class SingleThreadExecutorDemo {
+    public static void main(String[] args) {
+        ExecutorService executorService = Executors.newSingleThreadExecutor();
+        for (int i = 1; i <= 10; i++) {
+            final int index = i;
+            executorService.execute(new Runnable() {
+                @Override
+                public void run() {
+                    System.out.println(Thread.currentThread().getName() + "===" + index);
+                    try {
+                        Thread.sleep(500);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
+            });
+        }
+    }
+}
+```
+![](https://raw.githubusercontent.com/leil1230/JavaThreadLearn/master/img/1577264169(1).jpg)
